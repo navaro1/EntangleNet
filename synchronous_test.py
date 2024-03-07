@@ -3,13 +3,13 @@ import random
 
 import pytest
 
-from synchronous import external_phase
+from synchronous import external_phase, internal_phase
 import networkx as nx
 
 random.seed(100)  # set seed for reproducible tests
 
 
-class TestSynchronousPhase:
+class TestExternalPhase:
     physical_topology = nx.grid_2d_graph(3, 3)
 
     def test_should_return_empty_graph_when_p_is_0(self):
@@ -47,3 +47,40 @@ class TestSynchronousPhase:
         average_instant_edges = sum(number_of_edges_instant_list) / len(number_of_edges_instant_list)
         expected_number_of_edges = round(number_of_edges_physical * p_input)
         assert math.isclose(expected_number_of_edges, average_instant_edges, rel_tol=0.05)
+
+
+class TestInternalPhase:
+    source = (0, 0)  # upper left corner
+    target = (2, 2)  # lower right corner
+    full_instant_topology = nx.grid_2d_graph(3, 3)
+
+    def test_should_return_none_when_instant_topology_is_empty(self):
+        path = internal_phase(nx.empty_graph(), source=self.source, target=self.target, q=1.0)
+        assert path is None
+
+    def test_should_return_none_when_source_is_target(self):
+        path = internal_phase(self.full_instant_topology, source=self.source, target=self.source, q=1.0)
+        assert path is None
+
+    def test_should_return_none_when_q_is_0(self):
+        path = internal_phase(self.full_instant_topology, source=self.source, target=self.target, q=0)
+        assert path is None
+
+    def test_should_return_path_when_q_is_0_but_there_is_no_swap_to_happen(self):
+        no_swap_instant_topology = nx.path_graph(2)  # 0 -- 1
+        path = internal_phase(no_swap_instant_topology, source=0, target=1, q=0)
+        assert path == [0, 1]
+
+    def test_should_return_path_when_q_is_1_on_simple_topology(self):
+        simple_instant_topology = nx.path_graph(3)  # 0 -- 1 -- 2
+        path = internal_phase(simple_instant_topology, source=0, target=2, q=1)
+        assert path == [0, 1, 2]
+
+    def test_should_return_path_when_q_is_1_on_simple_tree_topology(self):
+        # 0 -- 1 -- 2
+        #      ' -- 3
+        simple_tree_topology = nx.path_graph(3)
+        simple_tree_topology.add_node(3)
+        simple_tree_topology.add_edge(1, 3)
+        path = internal_phase(simple_tree_topology, source=0, target=3, q=1)
+        assert path == [0, 1, 3]

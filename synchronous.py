@@ -43,8 +43,9 @@ def internal_phase(instant_topology, source, target, q):
             adjacent_list_representation = dict(remaining_instant_topology.adjacency())
 
         for swapped_adjacent_node in adjacent_list_representation.get(last_node, []):
-            new_path = list(path)
-            new_path.append(swapped_adjacent_node)
-            paths_queue.append(new_path)
+            if swapped_adjacent_node not in path:
+                new_path = list(path)
+                new_path.append(swapped_adjacent_node)
+                paths_queue.append(new_path)
 
     return None

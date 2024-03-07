@@ -84,3 +84,9 @@ class TestInternalPhase:
         simple_tree_topology.add_edge(1, 3)
         path = internal_phase(simple_tree_topology, source=0, target=3, q=1)
         assert path == [0, 1, 3]
+
+    def test_should_be_no_none_where_there_is_no_path(self):
+        disconnected_instant_topology = nx.path_graph(3)
+        disconnected_instant_topology.add_node(3)
+        path = internal_phase(disconnected_instant_topology, source=0, target=3, q=1)
+        assert path is None

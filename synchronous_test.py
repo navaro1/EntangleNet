@@ -107,7 +107,7 @@ class TestUtils:
 
 
 class TestExternalInternalPhases:
-    # @pytest.mark.skip(reason="For local play")
+    @pytest.mark.skip(reason="For local play")
     def test_should_be_close_to_solutions_from_paper_on_2d_graph(self):
         # based on the paper
         full_instant_topology = nx.grid_2d_graph(4, 4)

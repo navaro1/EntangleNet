@@ -23,39 +23,55 @@ def internal_phase(instant_topology, source, target, q):
             or nx.utils.graphs_equal(instant_topology, nx.empty_graph())):
         return None
 
-    remaining_instant_topology = instant_topology.copy()
-
-    # All neighbours are entangled in instant topology (by definition of instant topology),
-    # so no need to swap if source neighbours.
-    paths_queue = [[source, n] for n in nx.all_neighbors(remaining_instant_topology, source)]
-    adjacent_list_representation = dict(remaining_instant_topology.adjacency())
-    while paths_queue:
-        path = paths_queue.pop(0)
-        last_node = path[-1]
-        if last_node == target:
-            return path
-
-        # remove unsuccessful swaps
-        for adjacent_node in list(adjacent_list_representation.get(last_node, [])):
-            entanglement_swap_failure = random.random() >= q
-            if entanglement_swap_failure:
-                remaining_instant_topology.remove_edge(last_node, adjacent_node)
-            adjacent_list_representation = dict(remaining_instant_topology.adjacency())
-
-        for swapped_adjacent_node in adjacent_list_representation.get(last_node, []):
-            if swapped_adjacent_node not in path:
-                new_path = list(path)
-                new_path.append(swapped_adjacent_node)
-                paths_queue.append(new_path)
-
-    return None
+    copied_instant_topology = instant_topology.copy()
+    neighbours = list(nx.all_neighbors(copied_instant_topology, source))
+    while len(neighbours) > 0:
+        if target in neighbours:
+            return True
+        random_n = random.choice(neighbours)
+        n_neighbours = list(nx.all_neighbors(copied_instant_topology, random_n))
+        if n_neighbours == [source]:
+            return False
+        random_nn = random.choice(n_neighbours)
+        while random_nn == source:
+            random_nn = random.choice(n_neighbours)
+        for n in neighbours:
+            copied_instant_topology.remove_edge(source, n)
+        for nn in n_neighbours:
+            if nn != source:
+                copied_instant_topology.remove_edge(random_n, nn)
+        entanglement_swap_failure = random.random() >= q
+        if entanglement_swap_failure:
+            return False
+        copied_instant_topology.add_edge(source, random_nn)
+        neighbours = list(nx.all_neighbors(copied_instant_topology, source))
+    return False
 
 
 def approx_mean_path_length_for_2d_lattice(graph, source, target, check_is_lattice=True):
     if check_is_lattice and not is_2d_lattice_graph(graph):
         raise ValueError("Graph is not a 2D lattice")
 
-    pass
+    x_s, y_s = source
+    x_t, y_t = target
+    l1_distance = abs(x_s - x_t) + abs(y_s - y_t)  # this is also the shortest path length in 2D lattice
+    all_simple_paths = list(nx.all_simple_edge_paths(graph, source=source, target=target))
+    m_to_paths = {}
+    for path in all_simple_paths:
+        m_for_path = ((len(path) - l1_distance) / 2) + 1
+        if m_for_path in m_to_paths:
+            m_to_paths[m_for_path].append(path)
+        else:
+            m_to_paths[m_for_path] = [path]
+    numerator_sum = 0
+    denominator_sum = 0
+    for m, paths in m_to_paths.items():
+        number_of_paths = len(paths)
+        path_length = len(paths[0])
+        numerator_sum += number_of_paths * path_length
+        denominator_sum += number_of_paths
+
+    return numerator_sum / denominator_sum
 
 
 def is_2d_lattice_graph(graph) -> bool:

@@ -6,4 +6,4 @@ Current goal: Reproduce DODAG and synchronous results from [Asynchronous Entangl
 
 ### Current Milestone
 
-MVP for synchronous approach, w/o actual any quantum simulation
+MVP for simplest (very bad) single-path (single-try) synchronous approach, w/o actual any quantum simulation

@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from synchronous import external_phase, internal_phase, is_2d_lattice_graph
+from synchronous import external_phase, internal_phase, is_2d_lattice_graph, approx_mean_path_length_for_2d_lattice
 import networkx as nx
 
 random.seed(100)  # set seed for reproducible tests
@@ -64,32 +64,23 @@ class TestInternalPhase:
 
     def test_should_return_none_when_q_is_0(self):
         path = internal_phase(self.full_instant_topology, source=self.source, target=self.target, q=0)
-        assert path is None
+        assert path is False
 
     def test_should_return_path_when_q_is_0_but_there_is_no_swap_to_happen(self):
         no_swap_instant_topology = nx.path_graph(2)  # 0 -- 1
         path = internal_phase(no_swap_instant_topology, source=0, target=1, q=0)
-        assert path == [0, 1]
+        assert path is True
 
     def test_should_return_path_when_q_is_1_on_simple_topology(self):
         simple_instant_topology = nx.path_graph(3)  # 0 -- 1 -- 2
         path = internal_phase(simple_instant_topology, source=0, target=2, q=1)
-        assert path == [0, 1, 2]
-
-    def test_should_return_path_when_q_is_1_on_simple_tree_topology(self):
-        # 0 -- 1 -- 2
-        #      ' -- 3
-        simple_tree_topology = nx.path_graph(3)
-        simple_tree_topology.add_node(3)
-        simple_tree_topology.add_edge(1, 3)
-        path = internal_phase(simple_tree_topology, source=0, target=3, q=1)
-        assert path == [0, 1, 3]
+        assert path is True
 
     def test_should_be_no_none_where_there_is_no_path(self):
         disconnected_instant_topology = nx.path_graph(3)
         disconnected_instant_topology.add_node(3)
-        path = internal_phase(disconnected_instant_topology, source=0, target=3, q=1)
-        assert path is None
+        result = internal_phase(disconnected_instant_topology, source=0, target=3, q=1)
+        assert result is False
 
 
 class TestUtils:
@@ -116,28 +107,27 @@ class TestUtils:
 
 
 class TestExternalInternalPhases:
-    @pytest.mark.skip(reason="MissXing approx of paths")
-    def test_should_be_close_to_solutions_from_paper_on_2d_graph():
+    # @pytest.mark.skip(reason="For local play")
+    def test_should_be_close_to_solutions_from_paper_on_2d_graph(self):
         # based on the paper
-        full_instant_topology = nx.grid_2d_graph(5, 5)
+        full_instant_topology = nx.grid_2d_graph(4, 4)
         p = 0.8
         q = 0.8
-        source = (0, 0)
-        target = (4, 4)
+        source = (1, 1)
+        target = (2, 2)
         disjoint_paths = list(nx.edge_disjoint_paths(full_instant_topology, s=source, t=target))
         all_paths_lengths = [len(p) - 1 for p in
-                             nx.all_shortest_paths(full_instant_topology, source=source, target=target)]
+                             nx.all_simple_paths(full_instant_topology, source=source, target=target)]
         mean_path_length = sum(all_paths_lengths) / len(all_paths_lengths)
         number_of_disjoint_paths = len(disjoint_paths)
-        expected_rate = p ** mean_path_length * q ** (mean_path_length - 1) * number_of_disjoint_paths
-
         rates = []
-        for n in range(1000):
+        for n in range(50000):
             instant_topology = external_phase(full_instant_topology, p)
-            path = internal_phase(instant_topology, source=source, target=target, q=q)
-            if path is None:
-                rates.append(0)
-            else:
+            result = internal_phase(instant_topology, source=source, target=target, q=q)
+            if result:
                 rates.append(1)
+            else:
+                rates.append(0)
         actual_rate = sum(rates) / len(rates)
+        expected_rate = p ** mean_path_length * q ** (mean_path_length - 1) * number_of_disjoint_paths
         assert math.isclose(actual_rate, expected_rate)

@@ -14,7 +14,7 @@ class AsyncSchemeBase:
     def direct_neighbours(self):
         raise NotImplementedError()
 
-    def instant_neighbours(self):
+    def get_instant_neighbours(self):
         raise NotImplementedError()
 
 
@@ -26,9 +26,10 @@ class DodagAsyncNode(AsyncSchemeBase):
     @classmethod
     def construct_dodag_on_network(cls, physical_network: nx.Graph, root_node_id):
         for node in physical_network.nodes:
-            neighbours = list(nx.neighbors(physical_network, node))
+            neighbours_ids = list(nx.neighbors(physical_network, node))
+            neighbours_nodes = [physical_network.nodes[neighbour] for neighbour in neighbours_ids]
             rank = 0 if node == root_node_id else float('inf')
-            node_details = DodagAsyncNode(node_id=node, direct_links=neighbours, parent=None, rank=rank)
+            node_details = DodagAsyncNode(node_id=node, direct_links=neighbours_nodes, parent=None, rank=rank)
             nx.set_node_attributes(physical_network, {node: {DodagAttributeName: node_details}})
 
     def __init__(self, node_id, direct_links=None, parent=None, rank=float('inf')):
@@ -39,6 +40,7 @@ class DodagAsyncNode(AsyncSchemeBase):
         self.node_id = node_id
         self.parent = parent
         self.rank = rank
+        self.instant_neighbours = []
 
     def __eq__(self, other):
         return (self.node_id == other.node_id
@@ -50,13 +52,14 @@ class DodagAsyncNode(AsyncSchemeBase):
         return self.parent
 
     def join_network(self):
-        raise NotImplementedError()
+        for neighbour in self.direct_links:
+            self.receive_dio(neighbour[DodagAttributeName])
 
     def direct_neighbours(self):
         raise NotImplementedError()
 
-    def instant_neighbours(self):
-        raise NotImplementedError()
+    def get_instant_neighbours(self):
+        return self.instant_neighbours
 
     def is_root(self):
         return self.parent is None
@@ -64,7 +67,7 @@ class DodagAsyncNode(AsyncSchemeBase):
     # sending 'dio' is asking: 'do you want to join us?',
     def send_dis(self):
         for neighbour in self.direct_links:
-            neighbour.receive_dio(self)
+            neighbour[DodagAttributeName].receive_dio(self)
 
     def receive_dio(self, potential_parent_node):
         if self.rank is None or self.rank > potential_parent_node.rank + 1:
@@ -74,6 +77,8 @@ class DodagAsyncNode(AsyncSchemeBase):
 
     # sending 'dao' is saying: 'Yes, I want to join you'
     def receive_dao(self, calling_child_node):
+        self.instant_neighbours.append(calling_child_node)
+        calling_child_node.instant_neighbours.append(self)
         pass
 
     # sending 'dis' are you in dodag?

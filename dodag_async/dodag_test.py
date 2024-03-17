@@ -23,7 +23,7 @@ class TestAsyncSchemeBase:
     def test_instant_links_should_raise_not_implemented_error(self):
         base = AsyncSchemeBase()
         with pytest.raises(NotImplementedError):
-            base.instant_neighbours()
+            base.get_instant_neighbours()
 
 
 class TestDodagAsyncScheme:
@@ -104,8 +104,43 @@ class TestDodagAsyncScheme:
                                                     parent=None, rank=float('inf'))
             assert actual_dodag_details == expected_dodag_details
 
-    def test_dodag_should_be_created_in_simple_scenario(self):
-        pass
+    def test_should_join_one_node_scenario(self):
+        physical_network = nx.grid_2d_graph(3, 3)
+        root_node_id = (1, 1)
+        one_below_node_id = (2, 1)
+        DodagAsyncNode.construct_dodag_on_network(physical_network, root_node_id=root_node_id)
+        root_node = physical_network.nodes[root_node_id]
+        one_below_node = physical_network.nodes[one_below_node_id]
+        one_below_node_dodag = one_below_node[DodagAttributeName]
+        root_node_dodag = root_node[DodagAttributeName]
+        one_below_node_dodag.join_network()
+        assert one_below_node_dodag.parent == root_node_dodag
+        assert one_below_node_dodag.rank == 1
+        assert one_below_node_dodag.get_instant_neighbours() == [root_node_dodag]
+        assert root_node_dodag.get_instant_neighbours() == [one_below_node_dodag]
+
+    def test_should_join_two_node_scenario(self):
+        physical_network = nx.grid_2d_graph(3, 3)
+        root_node_id = (1, 1)
+        one_below_node_id = (2, 1)
+        one_below_node_id_2 = (2, 2)
+        DodagAsyncNode.construct_dodag_on_network(physical_network, root_node_id=root_node_id)
+        root_node = physical_network.nodes[root_node_id]
+        one_below_node = physical_network.nodes[one_below_node_id]
+        one_below_node_2 = physical_network.nodes[one_below_node_id_2]
+        one_below_node_dodag = one_below_node[DodagAttributeName]
+        one_below_node_dodag_2 = one_below_node_2[DodagAttributeName]
+        root_node_dodag = root_node[DodagAttributeName]
+        one_below_node_dodag.join_network()
+        one_below_node_dodag_2.join_network()
+        assert one_below_node_dodag.parent == root_node_dodag
+        assert one_below_node_dodag_2.parent == one_below_node_dodag
+        assert one_below_node_dodag.rank == 1
+        assert one_below_node_dodag_2.rank == 2
+        assert one_below_node_dodag.get_instant_neighbours() == [root_node_dodag, one_below_node_dodag_2]
+        assert one_below_node_dodag_2.get_instant_neighbours() == [one_below_node_dodag]
+        assert root_node_dodag.get_instant_neighbours() == [one_below_node_dodag]
+
 
 
 class _DodagAsyncNodeTest(DodagAsyncNode):

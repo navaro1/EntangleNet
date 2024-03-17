@@ -1,6 +1,7 @@
+import networkx as nx
 import pytest
 
-from dodag import AsyncSchemeBase, DodagAsyncNode
+from dodag import AsyncSchemeBase, DodagAsyncNode, DodagAttributeName
 
 
 class TestAsyncSchemeBase:
@@ -62,7 +63,7 @@ class TestDodagAsyncScheme:
         n2 = _DodagAsyncNodeTest(node_id="neighbour2")
         neighbours = [n1, n2]
         node_under_test = DodagAsyncNode(node_id="node_under_test", direct_links=neighbours)
-        node_under_test.send_dio()
+        node_under_test.send_dis()
         assert n1.called_dio_with == node_under_test
         assert n2.called_dio_with == node_under_test
 
@@ -83,6 +84,29 @@ class TestDodagAsyncScheme:
         assert node_under_test.parent == new_parent_node
         assert new_parent_node.last_dao_call_arg == node_under_test
 
+    def test_construct_dodag_should_initialize_async_nodes_and_return_root_node(self):
+        physical_network = nx.grid_2d_graph(3, 3)
+        root_node_id = (1, 1)
+        DodagAsyncNode.construct_dodag_on_network(physical_network, root_node_id=root_node_id)
+        root_node = physical_network.nodes[root_node_id]
+        actual_dodag_details = root_node[DodagAttributeName]
+        expected_dodag_details = DodagAsyncNode(node_id=root_node_id,
+                                                direct_links=[(0, 1), (2, 1), (1, 0), (1, 2)],
+                                                parent=None, rank=0, )
+        assert actual_dodag_details == expected_dodag_details
+        # Now for every other node
+        for node in physical_network.nodes:
+            if node == root_node_id:
+                continue
+            actual_dodag_details = physical_network.nodes[node][DodagAttributeName]
+            expected_dodag_details = DodagAsyncNode(node_id=node,
+                                                    direct_links=list(nx.neighbors(physical_network, node)),
+                                                    parent=None, rank=float('inf'))
+            assert actual_dodag_details == expected_dodag_details
+
+    def test_dodag_should_be_created_in_simple_scenario(self):
+        pass
+
 
 class _DodagAsyncNodeTest(DodagAsyncNode):
     def __init__(self, node_id, direct_links=None, parent=None, rank=float('inf')):
@@ -94,6 +118,6 @@ class _DodagAsyncNodeTest(DodagAsyncNode):
         super().receive_dio(potential_parent_node)
         self.called_dio_with = potential_parent_node
 
-    def receive_dao(self, calling_node):
-        super().receive_dao(calling_node)
-        self.last_dao_call_arg = calling_node
+    def receive_dao(self, calling_child_node):
+        super().receive_dao(calling_child_node)
+        self.last_dao_call_arg = calling_child_node

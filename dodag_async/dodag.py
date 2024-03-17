@@ -83,6 +83,11 @@ class DodagAsyncNode(AsyncSchemeBase):
 
     # sending 'dis' are you in dodag?
 
+    def __str__(self):
+        return f'Node: {self.node_id}. Parent: {self.parent}. Rank: {self.rank}. Direct links: {self.direct_links}'
+
+    def __repr__(self):
+        return f'Node: {self.node_id}. Parent: {self.parent}. Rank: {self.rank}. Direct links: {self.direct_links}'
 
 ################
 

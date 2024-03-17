@@ -61,7 +61,7 @@ class TestDodagAsyncScheme:
     def test_send_dio_should_call_receive_dio_on_neighbours(self):
         n1 = _DodagAsyncNodeTest(node_id="neighbour1")
         n2 = _DodagAsyncNodeTest(node_id="neighbour2")
-        neighbours = [n1, n2]
+        neighbours = [{DodagAttributeName: n1}, {DodagAttributeName: n2}]
         node_under_test = DodagAsyncNode(node_id="node_under_test", direct_links=neighbours)
         node_under_test.send_dis()
         assert n1.called_dio_with == node_under_test
@@ -91,7 +91,10 @@ class TestDodagAsyncScheme:
         root_node = physical_network.nodes[root_node_id]
         actual_dodag_details = root_node[DodagAttributeName]
         expected_dodag_details = DodagAsyncNode(node_id=root_node_id,
-                                                direct_links=[(0, 1), (2, 1), (1, 0), (1, 2)],
+                                                direct_links=[physical_network.nodes[(0, 1)],
+                                                              physical_network.nodes[(2, 1)],
+                                                              physical_network.nodes[(1, 0)],
+                                                              physical_network.nodes[(1, 2)]],
                                                 parent=None, rank=0, )
         assert actual_dodag_details == expected_dodag_details
         # Now for every other node
@@ -100,7 +103,8 @@ class TestDodagAsyncScheme:
                 continue
             actual_dodag_details = physical_network.nodes[node][DodagAttributeName]
             expected_dodag_details = DodagAsyncNode(node_id=node,
-                                                    direct_links=list(nx.neighbors(physical_network, node)),
+                                                    direct_links=[physical_network.nodes[node] for node in
+                                                                  nx.neighbors(physical_network, node)],
                                                     parent=None, rank=float('inf'))
             assert actual_dodag_details == expected_dodag_details
 
@@ -140,7 +144,6 @@ class TestDodagAsyncScheme:
         assert one_below_node_dodag.get_instant_neighbours() == [root_node_dodag, one_below_node_dodag_2]
         assert one_below_node_dodag_2.get_instant_neighbours() == [one_below_node_dodag]
         assert root_node_dodag.get_instant_neighbours() == [one_below_node_dodag]
-
 
 
 class _DodagAsyncNodeTest(DodagAsyncNode):
